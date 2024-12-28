@@ -111,8 +111,10 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
   Future<void> _filteredMovie(
       SearchMovies event, Emitter<MovieState> emit) async {
     try {
-      final currentState = state;
-      if (event.query.trim().isEmpty) {
+      final query = event.query.trim().toLowerCase();
+
+      // If the query is empty, restore the previous state
+      if (query.isEmpty) {
         if (state is MoviesLoaded) {
           emit(MoviesLoaded((state as MoviesLoaded).movies));
         } else if (state is MoviesOffline) {
@@ -121,38 +123,27 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
         return;
       }
 
-      if (currentState is MoviesLoaded) {
-        // Perform case-insensitive filtering
+      List<Movie> sourceMovies = [];
 
-        final query = event.query.trim().toLowerCase();
-
-        final filteredMovies = allMovie
-            .where((movie) => movie.title.toLowerCase().contains(query))
-            .toList();
-        // Emit the filtered movies as a new state
-        emit(SearchMovie(filteredMovies));
-      } else if (currentState is MoviesOffline) {
-        // Handle offline state filtering if required
-        final query = event.query.trim().toLowerCase();
-        allMovie = currentState.favorites;
-        final filteredMovies = currentState.favorites
-            .where((movie) => movie.title.toLowerCase().contains(query))
-            .toList();
-        emit(SearchMovie(filteredMovies));
+      // Determine the source of movies to filter
+      if (state is MoviesLoaded) {
+        sourceMovies = (state as MoviesLoaded).movies;
+      } else if (state is MoviesOffline) {
+        sourceMovies = (state as MoviesOffline).favorites;
       } else {
-        // Emit an empty result if the state is not suitable for searching
-        final query = event.query.trim().toLowerCase();
-
-        final filteredMovies = allMovie
-            .where((movie) => movie.title.toLowerCase().contains(query))
-            .toList();
-
-        // Log the filtered results
-        log('Filtered movies: ${filteredMovies.map((m) => m.title).toList()}');
-
-        // Emit the filtered movies as a new state
-        emit(SearchMovie(filteredMovies));
+        sourceMovies = allMovie; // Default fallback
       }
+
+      // Perform case-insensitive filtering
+      final filteredMovies = sourceMovies
+          .where((movie) => movie.title.toLowerCase().contains(query))
+          .toList();
+
+      // Log filtered results
+      log('Filtered movies: ${filteredMovies.map((m) => m.title).toList()}');
+
+      // Emit filtered movies as a new state
+      emit(SearchMovie(filteredMovies));
     } catch (e) {
       emit(MoviesError('Failed to filter movies: $e'));
     }

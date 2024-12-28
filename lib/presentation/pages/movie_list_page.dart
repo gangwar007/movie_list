@@ -99,7 +99,6 @@ class _MovieListPageState extends State<MovieListPage> {
       itemCount: movies.length,
       itemBuilder: (context, index) {
         final movie = movies[index];
-        log('sjfsdfjsfkjns===>>>${movie.title}');
         return GestureDetector(
           onTap: () {
             Navigator.push(
