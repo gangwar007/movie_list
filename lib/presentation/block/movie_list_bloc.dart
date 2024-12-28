@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -14,16 +15,27 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
   final MovieRepositoryImp repository;
 
   List<Movie> allMovie = [];
+  late final StreamSubscription<ConnectivityResult> _connectivitySubscription;
 
   MovieBloc({
     required this.fetchFavorite,
     required this.repository,
   }) : super(MoviesInitial()) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+        (connectivityResult) => _handleConnectivityChange(connectivityResult));
     on<SearchMovies>(_filteredMovie);
     on<CheckConnectionAndLoadMovies>(_checkConnectionAndLoadMovies);
     on<LoadMovies>(_loadMovies);
     on<LoadFavorites>(_loadFavorites);
     on<ToggleFavoriteMovie>(_toggleFavorite);
+  }
+
+  void _handleConnectivityChange(ConnectivityResult connectivityResult) {
+    if (connectivityResult == ConnectivityResult.none) {
+      add(LoadFavorites()); // Trigger loading favorites when offline
+    } else {
+      add(LoadMovies()); // Trigger loading movies when online
+    }
   }
 
   Future<void> _checkConnectionAndLoadMovies(
