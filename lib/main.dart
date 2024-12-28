@@ -12,6 +12,7 @@ import 'data/repositories/movie_repository_imp.dart';
 import 'domain/usecases/fetch_favorites.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(MovieHiveModelAdapter());
 

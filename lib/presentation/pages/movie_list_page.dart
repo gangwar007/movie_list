@@ -10,7 +10,35 @@ import '../block/movie_list_event.dart';
 import 'movie_card.dart';
 import 'movie_detail_page.dart';
 
-class MovieListPage extends StatelessWidget {
+class MovieListPage extends StatefulWidget {
+  @override
+  State<MovieListPage> createState() => _MovieListPageState();
+}
+
+class _MovieListPageState extends State<MovieListPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _currentSearchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      final newQuery = _searchController.text;
+
+      log('queryy==>$newQuery');
+      if (newQuery != _currentSearchQuery) {
+        _currentSearchQuery = newQuery;
+        context.read<MovieBloc>().add(SearchMovies(_currentSearchQuery));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Trigger loading data when the app is loaded
@@ -22,10 +50,7 @@ class MovieListPage extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: TextField(
-                onChanged: (query) {
-                  log('Search query: $query');
-                  context.read<MovieBloc>().add(SearchMovies(query));
-                },
+                controller: _searchController,
                 decoration: const InputDecoration(
                   hintText: 'Search movies...',
                   prefixIcon: Icon(Icons.search),
@@ -52,7 +77,9 @@ class MovieListPage extends StatelessWidget {
               return movieList(state.favorites);
             } else if (state is SearchMovie) {
               // Show movies in a grid view
-
+              if (state.filteredMovie.isEmpty) {
+                return Center(child: Text('No movies found.'));
+              }
               return movieList(state.filteredMovie);
             }
             return Center(child: Text('No data available.'));

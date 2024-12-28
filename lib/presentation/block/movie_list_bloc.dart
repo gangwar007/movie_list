@@ -13,15 +13,17 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
   final FetchFavorite fetchFavorite;
   final MovieRepositoryImp repository;
 
+  List<Movie> allMovie = [];
+
   MovieBloc({
     required this.fetchFavorite,
     required this.repository,
   }) : super(MoviesInitial()) {
+    on<SearchMovies>(_filteredMovie);
     on<CheckConnectionAndLoadMovies>(_checkConnectionAndLoadMovies);
     on<LoadMovies>(_loadMovies);
     on<LoadFavorites>(_loadFavorites);
     on<ToggleFavoriteMovie>(_toggleFavorite);
-    on<SearchMovies>(_filteredMovie);
   }
 
   Future<void> _checkConnectionAndLoadMovies(
@@ -29,7 +31,6 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     emit(MoviesLoading());
     final connectivityResult = await Connectivity().checkConnectivity();
 
-    log('dddddd===>>>$connectivityResult');
     if (connectivityResult == ConnectivityResult.none) {
       add(LoadFavorites()); // Trigger loading favorites when offline
     } else {
@@ -41,6 +42,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     emit(MoviesLoading());
     try {
       final movies = await repository.fetchMovies();
+      allMovie = movies;
       emit(MoviesLoaded(movies));
     } catch (e) {
       if (e.toString().contains('No Internet connection')) {
@@ -84,8 +86,6 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
             ? currentState.movies
             : (currentState as MoviesOffline).favorites;
 
-        log('sdffssff===>>>${currentFavorites.length}');
-
         final updatedFavorites =
             await fetchFavorite(event.movie, currentFavorites);
 
@@ -100,22 +100,49 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
       SearchMovies event, Emitter<MovieState> emit) async {
     try {
       final currentState = state;
-      List<Movie> movies = [];
+      if (event.query.trim().isEmpty) {
+        if (state is MoviesLoaded) {
+          emit(MoviesLoaded((state as MoviesLoaded).movies));
+        } else if (state is MoviesOffline) {
+          emit(MoviesOffline((state as MoviesOffline).favorites));
+        }
+        return;
+      }
+
       if (currentState is MoviesLoaded) {
-        movies = currentState.movies
-            .where((movie) => movie.title
-                .toLowerCase()
-                .contains(event.query.trim().toLowerCase()))
+        // Perform case-insensitive filtering
+
+        final query = event.query.trim().toLowerCase();
+
+        final filteredMovies = allMovie
+            .where((movie) => movie.title.toLowerCase().contains(query))
+            .toList();
+        // Emit the filtered movies as a new state
+        emit(SearchMovie(filteredMovies));
+      } else if (currentState is MoviesOffline) {
+        // Handle offline state filtering if required
+        final query = event.query.trim().toLowerCase();
+        allMovie = currentState.favorites;
+        final filteredMovies = currentState.favorites
+            .where((movie) => movie.title.toLowerCase().contains(query))
+            .toList();
+        emit(SearchMovie(filteredMovies));
+      } else {
+        // Emit an empty result if the state is not suitable for searching
+        final query = event.query.trim().toLowerCase();
+
+        final filteredMovies = allMovie
+            .where((movie) => movie.title.toLowerCase().contains(query))
             .toList();
 
-        for (Movie aaaa in movies) {
-          log('fdsfsff===>>>${aaaa.title}');
-        }
+        // Log the filtered results
+        log('Filtered movies: ${filteredMovies.map((m) => m.title).toList()}');
 
-        emit(SearchMovie(movies));
+        // Emit the filtered movies as a new state
+        emit(SearchMovie(filteredMovies));
       }
     } catch (e) {
-      emit(MoviesError('Failed to toggle favorite: $e'));
+      emit(MoviesError('Failed to filter movies: $e'));
     }
   }
 }
