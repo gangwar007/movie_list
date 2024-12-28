@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_list_example/presentation/block/movie_list_state.dart';
@@ -24,8 +22,6 @@ class _MovieListPageState extends State<MovieListPage> {
     super.initState();
     _searchController.addListener(() {
       final newQuery = _searchController.text;
-
-      log('queryy==>$newQuery');
       if (newQuery != _currentSearchQuery) {
         _currentSearchQuery = newQuery;
         context.read<MovieBloc>().add(SearchMovies(_currentSearchQuery));
